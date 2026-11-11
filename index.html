@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLA - Magazzino</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #F1F5F9; color: #0F172A; min-height: 100vh; }
+.header { background: #1A2F4B; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.header h1 { color: white; font-size: 17px; font-weight: 700; }
+.header-sub { color: #94A3B8; font-size: 12px; margin-top: 2px; }
+.btn-top { background: #2563EB; color: white; border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.tab-bar { background: #1A2F4B; display: flex; border-top: 1px solid #2D4A6A; }
+.tab { flex: 1; padding: 10px 4px; text-align: center; color: #94A3B8; font-size: 12px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; }
+.tab.active { color: white; border-bottom-color: #2563EB; }
+.tab .n { background: #DC2626; color: white; border-radius: 10px; padding: 1px 6px; font-size: 10px; margin-left: 4px; }
+.content { padding: 16px; max-width: 960px; margin: 0 auto; }
+.card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+.banner { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+.stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.stat-box { background: white; border-radius: 10px; padding: 12px 6px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.stat-num { font-size: 24px; font-weight: 700; color: #1A2F4B; }
+.stat-label { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+.stat-box.rosso .stat-num { color: #DC2626; }
+.stat-box.arancio .stat-num { color: #D97706; }
+.search { width: 100%; padding: 13px 14px; border: 2px solid #CBD5E1; border-radius: 10px; font-size: 16px; background: white; font-family: inherit; }
+.search:focus { outline: none; border-color: #2563EB; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 12px; }
+.chip { padding: 6px 12px; border-radius: 16px; background: white; border: 1.5px solid #E2E8F0; font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; }
+.chip.active { background: #1A2F4B; color: white; border-color: #1A2F4B; }
+.row { background: white; border-radius: 12px; margin-bottom: 8px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); border-left: 4px solid #059669; display: flex; align-items: center; gap: 12px; }
+.row.esaurito { border-left-color: #DC2626; }
+.row.scorta { border-left-color: #D97706; }
+.row.nonvalido { border-left-color: #94A3B8; opacity: .75; }
+.row-main { flex: 1; min-width: 0; }
+.code { font-size: 16px; font-weight: 700; }
+.cat { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: .4px; }
+.sub { font-size: 12px; color: #64748B; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.giac { text-align: center; min-width: 54px; }
+.giac b { font-size: 26px; display: block; line-height: 1; }
+.giac span { font-size: 10px; color: #94A3B8; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-left: 6px; vertical-align: 2px; }
+.b-ok { background: #ECFDF5; color: #059669; }
+.b-zero { background: #FEF2F2; color: #DC2626; }
+.b-low { background: #FFFBEB; color: #D97706; }
+.b-grey { background: #F1F5F9; color: #64748B; }
+.acts { display: flex; flex-direction: column; gap: 5px; }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+.btn-car { background: #ECFDF5; color: #047857; }
+.btn-sca { background: #FEF2F2; color: #B91C1C; }
+.btn-gr { background: #F1F5F9; color: #475569; }
+.btn { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+.btn-primary { background: #1A2F4B; color: white; }
+.btn-light { background: #E2E8F0; color: #334155; }
+.field { margin-bottom: 11px; }
+.field label { display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 4px; }
+.req { color: #DC2626; }
+select, input[type=text], input[type=number], input[type=date], textarea { width: 100%; padding: 10px 12px; border: 1.5px solid #E2E8F0; border-radius: 8px; font-size: 15px; background: white; font-family: inherit; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.seg div { padding: 11px; text-align: center; border-radius: 10px; font-weight: 700; border: 2px solid #E2E8F0; cursor: pointer; font-size: 14px; background: white; color: #64748B; }
+.seg div.on-c { background: #ECFDF5; border-color: #059669; color: #047857; }
+.seg div.on-s { background: #FEF2F2; border-color: #DC2626; color: #B91C1C; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; overflow-y: auto; }
+.modal-overlay.open { display: block; }
+.modal { background: white; margin: 20px auto; max-width: 520px; border-radius: 16px; overflow: hidden; }
+.modal-header { background: #1A2F4B; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+.modal-header h2 { color: white; font-size: 16px; }
+.modal-close { background: none; border: none; color: #94A3B8; font-size: 26px; cursor: pointer; }
+.modal-body { padding: 18px 20px 22px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1A2F4B; color: white; padding: 12px 22px; border-radius: 24px; font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 200; max-width: 90%; text-align: center; }
+.toast.show { opacity: 1; }
+.empty, .loading { text-align: center; padding: 36px; color: #94A3B8; }
+.hint { font-size: 12px; color: #64748B; margin-bottom: 10px; }
+@media (max-width: 560px) { .stats-bar { grid-template-columns: 1fr 1fr; } .row { flex-wrap: wrap; } .acts { flex-direction: row; width: 100%; } .acts .btn-sm { flex: 1; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div><h1>Magazzino CLA</h1><div class="header-sub" id="sub">Caricamento...</div></div>
+  <button class="btn-top" id="btnNuovoCodice">+ Nuovo codice</button>
+</div>
+<div class="tab-bar">
+  <div class="tab active" data-tab="mag">Magazzino</div>
+  <div class="tab" data-tab="riord">Da riordinare</div>
+  <div class="tab" data-tab="mov">Movimenti</div>
+  <div class="tab" data-tab="appr">Da approvare</div>
+</div>
+
+<div class="content" id="content"><div class="loading">Caricamento...</div></div>
+
+<div class="modal-overlay" id="modal"><div class="modal">
+  <div class="modal-header"><h2 id="mTitle"></h2><button class="modal-close" id="mClose">&times;</button></div>
+  <div class="modal-body" id="mBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== CONFIGURAZIONE ======
+// Incolla qui l'URL dell'app web Apps Script (finisce con /exec). Se vuoto la pagina parte in modalita demo.
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwUNazVN5pypzLVf0GxvISOSTnWFLz8MhFr05Qs-5ocVwKGGS7DQHI-ZiWwr3GHggqx/exec';
+// ============================
+var DEMO = !SCRIPT_URL;
+var CATS = ['FILTRI OLIO','FILTRI SEPARATORI','FILTRI ARIA','CARTUCCE FILTRI DI LINEA','PALETTE VUOTO','CINGHIE'];
+var DOC_SCARICO = ['FOGLIO DI LAVORO','FATTURA','PROFORMA'];
+var DOC_CARICO = ['DDT FORNITORE','FATTURA FORNITORE','NOTA DI CREDITO'];
+var S = { inv: [], mov: [], map: {}, q: '', cat: 'TUTTI', tab: 'mag' };
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function norm(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.classList.add('show'); setTimeout(function(){e.classList.remove('show');},2600); }
+function today(){ var d=new Date(); return d.toISOString().slice(0,10); }
+function fmtData(iso){ var p=String(iso).split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : iso; }
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } }
+
+// ---------- rete (JSONP) ----------
+function jsonp(params, cb){
+  var name='cb'+Date.now()+Math.floor(Math.random()*1000), done=false;
+  window[name]=function(d){ if(done)return; done=true; delete window[name]; s.remove(); cb(d); };
+  var s=document.createElement('script');
+  s.src=SCRIPT_URL+'?'+params+'&callback='+name;
+  s.onerror=function(){ if(done)return; done=true; s.remove(); cb(null); };
+  document.body.appendChild(s);
+}
+function qs(o){ return Object.keys(o).map(function(k){return k+'='+encodeURIComponent(o[k]==null?'':o[k]);}).join('&'); }
+
+function loadAll(){
+  if(DEMO){ demoData(); afterLoad(); return; }
+  jsonp('action=getAll&t='+Date.now(), function(d){
+    if(!d){ document.getElementById('content').innerHTML='<div class="empty">Impossibile leggere il magazzino. Controlla la connessione e riprova.</div>'; return; }
+    S.inv=d.inv||[]; S.mov=d.mov||[]; afterLoad();
+  });
+}
+function afterLoad(){ compute(); document.getElementById('sub').textContent=(DEMO?'MODALITA DEMO - ':'')+'Aggiornato alle '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}); render(); }
+
+// ---------- calcolo giacenze ----------
+function valido(m){
+  if(m.Stato!=='APPROVATO') return false;
+  if(m.Tipo==='CARICO') return true;
+  return DOC_SCARICO.indexOf(m.TipoDoc)>=0 && !!(m.RP||m.NumDoc);
+}
+function compute(){
+  var map={};
+  S.inv.forEach(function(r){ map[r.Codice]={r:r,ini:Number(r.GiacIniziale)||0,car:0,sca:0,act:0}; });
+  S.mov.forEach(function(m){ var x=map[m.Codice]; if(!x||!valido(m))return; var q=Number(m.Qta)||0; if(m.Tipo==='CARICO')x.car+=q; else x.sca+=q; });
+  Object.keys(map).forEach(function(k){ var x=map[k]; x.act=x.ini+x.car-x.sca; var so=Number(x.r.Soglia)||0; x.st = x.act<=0 ? 'zero' : (so>0 && x.act<=so ? 'low' : 'ok'); });
+  S.map=map;
+}
+function stBadge(st){ return st==='zero'?'<span class="badge b-zero">ESAURITO</span>':st==='low'?'<span class="badge b-low">SOTTO SCORTA</span>':''; }
+
+// ---------- viste ----------
+function render(){
+  var pend=S.mov.filter(function(m){return m.Stato==='DA APPROVARE';}).length;
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.classList.toggle('active',t.dataset.tab===S.tab);
+    if(t.dataset.tab==='appr') t.innerHTML='Da approvare'+(pend?'<span class="n">'+pend+'</span>':'');
+  });
+  var c=document.getElementById('content');
+  if(S.tab==='mag') c.innerHTML=viewMag();
+  else if(S.tab==='riord') c.innerHTML=viewRiord();
+  else if(S.tab==='mov') c.innerHTML=viewMov();
+  else c.innerHTML=viewAppr();
+  var inp=document.getElementById('q'); if(inp && S.focusQ){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+}
+function matchRow(x){
+  if(S.cat!=='TUTTI' && x.r.Categoria!==S.cat) return false;
+  if(!S.q) return true;
+  var hay=norm(x.r.Codice+' '+x.r.Marche+' '+x.r.Originali);
+  return S.q.split(/\s+/).every(function(t){ t=norm(t); return !t || hay.indexOf(t)>=0; });
+}
+function rowHtml(x){
+  var cls=x.st==='zero'?'esaurito':x.st==='low'?'scorta':'';
+  var so=Number(x.r.Soglia)||0;
+  return '<div class="row '+cls+'"><div class="row-main"><div class="cat">'+esc(x.r.Categoria)+'</div>'+
+    '<div class="code">'+esc(x.r.Codice)+stBadge(x.st)+'</div>'+
+    '<div class="sub">'+esc(x.r.Marche||'')+(x.r.Originali?' &middot; '+esc(x.r.Originali):'')+'</div></div>'+
+    '<div class="giac"><b>'+x.act+'</b><span>'+(so?'min '+so:'pezzi')+'</span></div>'+
+    '<div class="acts"><button class="btn-sm btn-car" data-act="car" data-code="'+esc(x.r.Codice)+'">+ Carico</button>'+
+    '<button class="btn-sm btn-sca" data-act="sca" data-code="'+esc(x.r.Codice)+'">- Scarico</button>'+
+    '<button class="btn-sm btn-gr" data-act="soglia" data-code="'+esc(x.r.Codice)+'">Scorta min</button></div></div>';
+}
+function viewMag(){
+  var all=Object.keys(S.map).map(function(k){return S.map[k];});
+  var tot=all.reduce(function(a,x){return a+Math.max(x.act,0);},0);
+  var zero=all.filter(function(x){return x.st==='zero';}).length, low=all.filter(function(x){return x.st==='low';}).length;
+  var list=all.filter(matchRow);
+  var h=(DEMO?'<div class="banner">Modalita demo: i dati qui sotto sono di prova. Collega lo script Google (vedi istruzioni) per usare il magazzino vero.</div>':'')+
+   '<div class="stats-bar"><div class="stat-box"><div class="stat-num">'+all.length+'</div><div class="stat-label">Codici</div></div>'+
+   '<div class="stat-box"><div class="stat-num">'+tot+'</div><div class="stat-label">Pezzi</div></div>'+
+   '<div class="stat-box rosso"><div class="stat-num">'+zero+'</div><div class="stat-label">Esauriti</div></div>'+
+   '<div class="stat-box arancio"><div class="stat-num">'+low+'</div><div class="stat-label">Sotto scorta</div></div></div>'+
+   '<input class="search" id="q" type="text" placeholder="Cerca codice, marca o codice originale..." value="'+esc(S.q)+'" autocomplete="off">'+
+   '<div class="chips">'+['TUTTI'].concat(CATS).map(function(c){return '<div class="chip'+(S.cat===c?' active':'')+'" data-cat="'+esc(c)+'">'+esc(c==='TUTTI'?'Tutti':c.charAt(0)+c.slice(1).toLowerCase())+'</div>';}).join('')+'</div>';
+  h+= list.length ? '<div class="hint">'+list.length+' codici</div>'+list.map(rowHtml).join('') : '<div class="empty">Nessun codice trovato.</div>';
+  return h;
+}
+function viewRiord(){
+  var list=Object.keys(S.map).map(function(k){return S.map[k];}).filter(function(x){return x.st!=='ok';}).sort(function(a,b){return a.act-b.act;});
+  var h='<div class="hint">Codici esauriti o sotto la scorta minima. Imposta la scorta minima dal pulsante su ogni codice.</div>';
+  if(!list.length) return h+'<div class="empty">Nessun codice da riordinare.</div>';
+  h+='<button class="btn btn-primary" data-act="copiaRiord" style="margin-bottom:12px">Copia lista per ordine</button>';
+  return h+list.map(rowHtml).join('');
+}
+function movRow(m, azioni){
+  var ok=valido(m), bad=m.Stato==='APPROVATO'&&!ok;
+  var cls=(m.Stato==='ANNULLATO'||bad)?'nonvalido':(m.Tipo==='CARICO'?'':'scorta');
+  var b = m.Stato==='ANNULLATO'?'<span class="badge b-grey">ANNULLATO</span>':bad?'<span class="badge b-zero">NON VALIDO: manca documento/RP</span>':m.Stato==='DA APPROVARE'?'<span class="badge b-low">DA APPROVARE</span>':'';
+  var sub=[m.Controparte,m.TipoDoc,m.NumDoc,m.RP,m.CodiceOrig?('orig. '+m.CodiceOrig):'',m.Operatore,m.Origine&&m.Origine!=='MANUALE'?m.Origine:''].filter(Boolean).map(esc).join(' &middot; ');
+  var a='';
+  if(azioni==='appr') a='<div class="acts"><button class="btn-sm btn-car" data-act="approva" data-id="'+esc(m.ID)+'">Approva</button><button class="btn-sm btn-sca" data-act="scarta" data-id="'+esc(m.ID)+'">Scarta</button></div>';
+  else if(m.Stato==='APPROVATO') a='<div class="acts"><button class="btn-sm btn-gr" data-act="annulla" data-id="'+esc(m.ID)+'">Annulla</button></div>';
+  var inInv=S.map[m.Codice]?'':' <span class="badge b-low">codice non in elenco</span>';
+  return '<div class="row '+cls+'"><div class="row-main"><div class="cat">'+esc(m.Data)+' &middot; '+esc(m.Tipo)+'</div><div class="code">'+esc(m.Codice)+b+inInv+'</div><div class="sub">'+sub+'</div></div><div class="giac"><b>'+(m.Tipo==='CARICO'?'+':'-')+esc(m.Qta)+'</b><span>pezzi</span></div>'+a+'</div>';
+}
+function viewMov(){
+  var list=S.mov.slice().reverse().filter(function(m){ if(!S.q)return true; var h=norm(m.Codice+' '+m.Controparte+' '+m.NumDoc+' '+m.RP+' '+m.CodiceOrig); return S.q.split(/\s+/).every(function(t){t=norm(t);return !t||h.indexOf(t)>=0;}); });
+  return '<input class="search" id="q" type="text" placeholder="Cerca per codice, cliente, RP, documento..." value="'+esc(S.q)+'" autocomplete="off" style="margin-bottom:12px">'+
+    (list.length? list.slice(0,300).map(function(m){return movRow(m,'');}).join('') : '<div class="empty">Nessun movimento.</div>');
+}
+function viewAppr(){
+  var list=S.mov.filter(function(m){return m.Stato==='DA APPROVARE';});
+  return '<div class="hint">Scarichi e carichi proposti automaticamente dal controllo notturno su Fatture in Cloud. Contano in magazzino solo dopo l\'approvazione.</div>'+
+    (list.length? list.map(function(m){return movRow(m,'appr');}).join('') : '<div class="empty">Niente da approvare.</div>');
+}
+
+// ---------- modali ----------
+function openModal(title, html){ document.getElementById('mTitle').textContent=title; document.getElementById('mBody').innerHTML=html; document.getElementById('modal').classList.add('open'); }
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function opts(arr){ return arr.map(function(a){return '<option>'+esc(a)+'</option>';}).join(''); }
+
+function formMov(code, tipo){
+  S.mt=tipo;
+  var dl='<datalist id="codes">'+Object.keys(S.map).map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist>';
+  openModal('Movimento di magazzino',
+    '<div class="seg"><div id="segC">Carico (entra)</div><div id="segS">Scarico (esce)</div></div>'+
+    '<div class="field"><label>Codice Noitech <span class="req">*</span></label><input type="text" id="fCodice" list="codes" value="'+esc(code||'')+'" autocomplete="off">'+dl+'</div>'+
+    '<div class="row2"><div class="field"><label>Quantita <span class="req">*</span></label><input type="number" id="fQta" min="1" value="1"></div>'+
+    '<div class="field"><label>Data</label><input type="date" id="fData" value="'+today()+'"></div></div>'+
+    '<div class="field"><label id="lCtrl">Cliente <span class="req">*</span></label><input type="text" id="fCtrl" autocomplete="off"></div>'+
+    '<div class="row2"><div class="field"><label>Tipo documento <span class="req" id="rDoc">*</span></label><select id="fDoc"></select></div>'+
+    '<div class="field"><label>N. documento</label><input type="text" id="fNum" autocomplete="off"></div></div>'+
+    '<div class="field" id="boxRP"><label>N. foglio di lavoro (RP) <span class="req">*</span></label><input type="text" id="fRP" placeholder="es. RP 64/26" autocomplete="off"></div>'+
+    '<div class="field"><label>Codice originale scritto sul documento</label><input type="text" id="fOrig" autocomplete="off"></div>'+
+    '<div class="field"><label>Chi inserisce</label><input type="text" id="fOp" value="'+esc(load('mag_op'))+'" autocomplete="off"></div>'+
+    '<button class="btn btn-primary" id="fSave">Salva movimento</button>');
+  setTipo(tipo);
+}
+function setTipo(t){
+  S.mt=t;
+  document.getElementById('segC').className = t==='CARICO'?'on-c':'';
+  document.getElementById('segS').className = t==='SCARICO'?'on-s':'';
+  document.getElementById('lCtrl').innerHTML = t==='CARICO'?'Fornitore <span class="req">*</span>':'Cliente <span class="req">*</span>';
+  document.getElementById('fDoc').innerHTML = opts(t==='CARICO'?['']. concat(DOC_CARICO):DOC_SCARICO);
+  document.getElementById('rDoc').style.display = t==='SCARICO'?'inline':'none';
+  document.getElementById('boxRP').style.display = t==='SCARICO'?'block':'none';
+}
+function saveMov(){
+  var g=function(id){return document.getElementById(id).value.trim();};
+  var code=g('fCodice'), q=parseInt(g('fQta'),10), t=S.mt;
+  if(!S.map[code]){ toast('Codice non presente nel magazzino'); return; }
+  if(!(q>0)){ toast('Quantita non valida'); return; }
+  if(!g('fCtrl')){ toast(t==='CARICO'?'Indica il fornitore':'Indica il cliente'); return; }
+  var doc=g('fDoc'), rp=t==='SCARICO'?g('fRP'):'', num=g('fNum');
+  if(t==='SCARICO'){
+    if(!doc){ toast('Scegli il tipo di documento'); return; }
+    if(!rp && !num){ toast('Serve il numero del foglio di lavoro (RP)'); return; }
+    var rif=rp||num;
+    var dup=S.mov.some(function(m){ return m.Tipo==='SCARICO' && m.Stato!=='ANNULLATO' && m.Codice===code && (m.RP===rif||m.NumDoc===rif); });
+    if(dup){ toast('Gia scaricato per questo RP/documento'); return; }
+    var x=S.map[code]; if(x.act-q<0 && !confirm('La giacenza va sotto zero ('+(x.act-q)+'). Salvare comunque?')) return;
+  }
+  save('mag_op',g('fOp'));
+  var m={ID:String(Date.now()),Data:fmtData(g('fData')),Codice:code,Tipo:t,Qta:q,Controparte:g('fCtrl'),TipoDoc:doc,NumDoc:num,RP:rp,CodiceOrig:g('fOrig'),Operatore:g('fOp'),Stato:'APPROVATO',Origine:'MANUALE',Note:''};
+  scrivi('addMov',m,function(ok){
+    if(ok){ S.mov.push(m); compute(); render(); closeModal(); toast('Movimento salvato'); }
+    else toast('Errore nel salvataggio, riprova');
+  });
+}
+function scrivi(action, obj, cb){
+  if(DEMO){ cb(true); return; }
+  var o={action:action}; for(var k in obj) o[k]=obj[k];
+  var called=false;
+  jsonp(qs(o), function(d){ if(called)return; called=true; cb(!!d && d.status!=='err' && d.status!=='dup'); });
+  setTimeout(function(){ if(!called){ called=true; cb(true); } }, 9000);
+}
+function formSoglia(code){
+  var x=S.map[code];
+  openModal('Scorta minima', '<div class="code" style="margin-bottom:4px">'+esc(code)+'</div><div class="hint">Giacenza attuale: '+x.act+'. Sotto questa soglia il codice finisce nella lista da riordinare (0 = avvisa solo a zero).</div>'+
+    '<div class="field"><label>Scorta minima</label><input type="number" id="fSoglia" min="0" value="'+(Number(x.r.Soglia)||0)+'"></div><button class="btn btn-primary" id="sSave" data-code="'+esc(code)+'">Salva</button>');
+}
+function formNuovo(){
+  openModal('Nuovo codice',
+    '<div class="field"><label>Categoria <span class="req">*</span></label><select id="nCat">'+opts(CATS)+'</select></div>'+
+    '<div class="field"><label>Codice Noitech <span class="req">*</span></label><input type="text" id="nCod" placeholder="es. NO 011380 oppure XPZ 1400" autocomplete="off"></div>'+
+    '<div class="field"><label>Marche compatibili</label><input type="text" id="nMar" autocomplete="off"></div>'+
+    '<div class="row2"><div class="field"><label>Giacenza iniziale</label><input type="number" id="nGia" min="0" value="0"></div><div class="field"><label>Scorta minima</label><input type="number" id="nSog" min="0" value="0"></div></div>'+
+    '<button class="btn btn-primary" id="nSave">Aggiungi al magazzino</button>');
+}
+
+// ---------- eventi ----------
+document.addEventListener('click', function(e){
+  var t=e.target;
+  if(t.id==='mClose'||t.id==='modal'){ closeModal(); return; }
+  if(t.id==='btnNuovoCodice'){ formNuovo(); return; }
+  if(t.id==='segC'){ setTipo('CARICO'); return; }
+  if(t.id==='segS'){ setTipo('SCARICO'); return; }
+  if(t.id==='fSave'){ saveMov(); return; }
+  if(t.id==='sSave'){
+    var code=t.dataset.code, v=parseInt(document.getElementById('fSoglia').value,10)||0;
+    scrivi('setSoglia',{codice:code,soglia:v},function(ok){ if(ok){ S.map[code].r.Soglia=v; compute(); render(); closeModal(); toast('Scorta minima salvata'); } else toast('Errore, riprova'); });
+    return;
+  }
+  if(t.id==='nSave'){
+    var g=function(id){return document.getElementById(id).value.trim();};
+    var cod=g('nCod').toUpperCase(); if(!cod){ toast('Inserisci il codice'); return; }
+    if(S.map[cod]){ toast('Codice gia presente'); return; }
+    var r={Categoria:g('nCat'),Codice:cod,Marche:g('nMar'),Originali:'',GiacIniziale:parseInt(g('nGia'),10)||0,Soglia:parseInt(g('nSog'),10)||0,Prezzo:'',Note:''};
+    scrivi('addCodice',r,function(ok){ if(ok){ S.inv.push(r); compute(); render(); closeModal(); toast('Codice aggiunto'); } else toast('Errore, riprova'); });
+    return;
+  }
+  var tab=t.closest('.tab'); if(tab){ S.tab=tab.dataset.tab; S.q=''; S.focusQ=false; render(); return; }
+  var chip=t.closest('.chip'); if(chip){ S.cat=chip.dataset.cat; render(); return; }
+  var b=t.closest('[data-act]'); if(!b) return;
+  var act=b.dataset.act, code=b.dataset.code, id=b.dataset.id;
+  if(act==='car') formMov(code,'CARICO');
+  else if(act==='sca') formMov(code,'SCARICO');
+  else if(act==='soglia') formSoglia(code);
+  else if(act==='copiaRiord'){
+    var txt=Object.keys(S.map).map(function(k){return S.map[k];}).filter(function(x){return x.st!=='ok';}).map(function(x){return x.r.Codice+' (giacenza '+x.act+')';}).join('\n');
+    if(navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){toast('Lista copiata');}); else toast('Copia non disponibile');
+  }
+  else if(act==='approva'||act==='scarta'||act==='annulla'){
+    if(act==='annulla' && !confirm('Annullare questo movimento? La giacenza torna come prima.')) return;
+    var nuovo = act==='approva'?'APPROVATO':'ANNULLATO';
+    scrivi('setStato',{id:id,stato:nuovo},function(ok){ if(ok){ S.mov.forEach(function(m){ if(String(m.ID)===String(id)) m.Stato=nuovo; }); compute(); render(); toast('Fatto'); } else toast('Errore, riprova'); });
+  }
+});
+document.addEventListener('input', function(e){ if(e.target.id==='q'){ S.q=e.target.value; S.focusQ=true; render(); } });
+
+// ---------- demo ----------
+function demoData(){
+  S.inv=[
+    {Categoria:'FILTRI OLIO',Codice:'NO 011380',Marche:'Atlas Copco',Originali:'1613610500',GiacIniziale:4,Soglia:2},
+    {Categoria:'FILTRI OLIO',Codice:'NO 015280',Marche:'Almig, Mattei',Originali:'',GiacIniziale:3,Soglia:1},
+    {Categoria:'FILTRI SEPARATORI',Codice:'NS 000450',Marche:'Atlas Copco',Originali:'',GiacIniziale:1,Soglia:2},
+    {Categoria:'FILTRI ARIA',Codice:'NA 098060',Marche:'Atlas Copco',Originali:'1613950100, 1613951000',GiacIniziale:3,Soglia:0},
+    {Categoria:'FILTRI ARIA',Codice:'NA 011160',Marche:'',Originali:'',GiacIniziale:0,Soglia:1},
+    {Categoria:'CARTUCCE FILTRI DI LINEA',Codice:'NM 000189',Marche:'Hiross 072 Q',Originali:'',GiacIniziale:2,Soglia:0},
+    {Categoria:'PALETTE VUOTO',Codice:'NC 100141',Marche:'Ecosep 90',Originali:'',GiacIniziale:1,Soglia:0},
+    {Categoria:'CINGHIE',Codice:'XPZ 1850',Marche:'',Originali:'',GiacIniziale:6,Soglia:2}
+  ];
+  S.mov=[
+    {ID:'1',Data:'14/10/2026',Codice:'NO 011380',Tipo:'SCARICO',Qta:1,Controparte:'CARLUCCI',TipoDoc:'FATTURA',NumDoc:'512/2026',RP:'RP 64/26',CodiceOrig:'1613610500',Operatore:'Francesca',Stato:'APPROVATO',Origine:'MANUALE'},
+    {ID:'2',Data:'15/10/2026',Codice:'NO 011380',Tipo:'CARICO',Qta:5,Controparte:'NOITECH',TipoDoc:'DDT FORNITORE',NumDoc:'88',RP:'',CodiceOrig:'',Operatore:'Francesca',Stato:'APPROVATO',Origine:'MANUALE'},
+    {ID:'3',Data:'10/11/2026',Codice:'NS 000450',Tipo:'SCARICO',Qta:1,Controparte:'ESTATE ZERO',TipoDoc:'FOGLIO DI LAVORO',NumDoc:'',RP:'RP 70/26',CodiceOrig:'',Operatore:'',Stato:'DA APPROVARE',Origine:'AUTO-FIC'}
+  ];
+}
+loadAll();
+</script>
+</body>
+</html>
