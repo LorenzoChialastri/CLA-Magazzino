@@ -108,7 +108,7 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwUNazVN5pypzLVf0GxvIS
 // ============================
 var DEMO = !SCRIPT_URL;
 var CATS_BASE = ['FILTRI OLIO','FILTRI SEPARATORI','FILTRI ARIA','CARTUCCE FILTRI DI LINEA','PALETTE VUOTO','CINGHIE','RACCORDI EQOFLUID','RACCORDI SPIRALFLEX','RICAMBI COMPRESSORI','RICAMBI ESSICCATORI','COMPRESSORI','ESSICCATORI','ALTRO'];
-function cats(){ var extra=[]; S.inv.forEach(function(r){ var c=String(r.Categoria||'').trim(); if(c && CATS_BASE.indexOf(c)<0 && extra.indexOf(c)<0) extra.push(c); }); var usate=CATS_BASE.filter(function(c){ return S.inv.some(function(r){return r.Categoria===c;}); }); return usate.concat(extra); }
+function cats(){ var extra=[]; S.inv.forEach(function(r){ var c=String(r.Categoria||'').trim(); if(c && CATS_BASE.indexOf(c)<0 && extra.indexOf(c)<0) extra.push(c); }); return CATS_BASE.concat(extra); }
 var DOC_SCARICO = ['FOGLIO DI LAVORO','FATTURA','PROFORMA','RESO FORNITORE'];
 var DOC_CARICO = ['DDT FORNITORE','FATTURA FORNITORE','NOTA DI CREDITO'];
 var S = { inv: [], mov: [], map: {}, q: '', cat: 'TUTTI', tab: 'mag', imp: null, bol: null };
