@@ -73,8 +73,10 @@ select, input[type=text], input[type=number], input[type=date], textarea { width
 .toast.show { opacity: 1; }
 .empty, .loading { text-align: center; padding: 36px; color: #94A3B8; }
 .hint { font-size: 12px; color: #64748B; margin-bottom: 10px; }
+@media (max-width: 700px) { .tab { font-size: 11px; padding: 10px 2px; } }
 @media (max-width: 560px) { .stats-bar { grid-template-columns: 1fr 1fr; } .row { flex-wrap: wrap; } .acts { flex-direction: row; width: 100%; } .acts .btn-sm { flex: 1; } }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -87,6 +89,8 @@ select, input[type=text], input[type=number], input[type=date], textarea { width
   <div class="tab" data-tab="riord">Da riordinare</div>
   <div class="tab" data-tab="mov">Movimenti</div>
   <div class="tab" data-tab="appr">Da approvare</div>
+  <div class="tab" data-tab="bol">Bolle</div>
+  <div class="tab" data-tab="imp">Punto zero</div>
 </div>
 
 <div class="content" id="content"><div class="loading">Caricamento...</div></div>
@@ -103,10 +107,11 @@ select, input[type=text], input[type=number], input[type=date], textarea { width
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwUNazVN5pypzLVf0GxvISOSTnWFLz8MhFr05Qs-5ocVwKGGS7DQHI-ZiWwr3GHggqx/exec';
 // ============================
 var DEMO = !SCRIPT_URL;
-var CATS = ['FILTRI OLIO','FILTRI SEPARATORI','FILTRI ARIA','CARTUCCE FILTRI DI LINEA','PALETTE VUOTO','CINGHIE'];
-var DOC_SCARICO = ['FOGLIO DI LAVORO','FATTURA','PROFORMA'];
+var CATS_BASE = ['FILTRI OLIO','FILTRI SEPARATORI','FILTRI ARIA','CARTUCCE FILTRI DI LINEA','PALETTE VUOTO','CINGHIE','RACCORDI EQOFLUID','RACCORDI SPIRALFLEX','RICAMBI COMPRESSORI','RICAMBI ESSICCATORI','COMPRESSORI','ESSICCATORI','ALTRO'];
+function cats(){ var extra=[]; S.inv.forEach(function(r){ var c=String(r.Categoria||'').trim(); if(c && CATS_BASE.indexOf(c)<0 && extra.indexOf(c)<0) extra.push(c); }); var usate=CATS_BASE.filter(function(c){ return S.inv.some(function(r){return r.Categoria===c;}); }); return usate.concat(extra); }
+var DOC_SCARICO = ['FOGLIO DI LAVORO','FATTURA','PROFORMA','RESO FORNITORE'];
 var DOC_CARICO = ['DDT FORNITORE','FATTURA FORNITORE','NOTA DI CREDITO'];
-var S = { inv: [], mov: [], map: {}, q: '', cat: 'TUTTI', tab: 'mag' };
+var S = { inv: [], mov: [], map: {}, q: '', cat: 'TUTTI', tab: 'mag', imp: null, bol: null };
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function norm(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
@@ -142,10 +147,11 @@ function valido(m){
   if(m.Tipo==='CARICO') return true;
   return DOC_SCARICO.indexOf(m.TipoDoc)>=0 && !!(m.RP||m.NumDoc);
 }
+function pd(s){ if(!s) return null; var m=String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return new Date(+m[3],+m[2]-1,+m[1]); var d=new Date(s); return isNaN(d.getTime())?null:d; }
 function compute(){
   var map={};
   S.inv.forEach(function(r){ map[r.Codice]={r:r,ini:Number(r.GiacIniziale)||0,car:0,sca:0,act:0}; });
-  S.mov.forEach(function(m){ var x=map[m.Codice]; if(!x||!valido(m))return; var q=Number(m.Qta)||0; if(m.Tipo==='CARICO')x.car+=q; else x.sca+=q; });
+  S.mov.forEach(function(m){ var x=map[m.Codice]; if(!x||!valido(m))return; var pc=pd(x.r.DataConta), md=pd(m.Data); if(pc && md && md<=pc) return; var q=Number(m.Qta)||0; if(m.Tipo==='CARICO')x.car+=q; else x.sca+=q; });
   Object.keys(map).forEach(function(k){ var x=map[k]; x.act=x.ini+x.car-x.sca; var so=Number(x.r.Soglia)||0; x.st = x.act<=0 ? 'zero' : (so>0 && x.act<=so ? 'low' : 'ok'); });
   S.map=map;
 }
@@ -162,13 +168,15 @@ function render(){
   if(S.tab==='mag') c.innerHTML=viewMag();
   else if(S.tab==='riord') c.innerHTML=viewRiord();
   else if(S.tab==='mov') c.innerHTML=viewMov();
+  else if(S.tab==='imp') c.innerHTML=viewImp();
+  else if(S.tab==='bol') c.innerHTML=viewBolle();
   else c.innerHTML=viewAppr();
   var inp=document.getElementById('q'); if(inp && S.focusQ){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
 }
 function matchRow(x){
   if(S.cat!=='TUTTI' && x.r.Categoria!==S.cat) return false;
   if(!S.q) return true;
-  var hay=norm(x.r.Codice+' '+x.r.Marche+' '+x.r.Originali);
+  var hay=norm(x.r.Codice+' '+x.r.Descrizione+' '+x.r.Marche+' '+x.r.Originali+' '+x.r.Fornitore+' '+x.r.Matricola);
   return S.q.split(/\s+/).every(function(t){ t=norm(t); return !t || hay.indexOf(t)>=0; });
 }
 function rowHtml(x){
@@ -176,15 +184,15 @@ function rowHtml(x){
   var so=Number(x.r.Soglia)||0;
   return '<div class="row '+cls+'"><div class="row-main"><div class="cat">'+esc(x.r.Categoria)+'</div>'+
     '<div class="code">'+esc(x.r.Codice)+stBadge(x.st)+'</div>'+
-    '<div class="sub">'+esc(x.r.Marche||'')+(x.r.Originali?' &middot; '+esc(x.r.Originali):'')+'</div></div>'+
-    '<div class="giac"><b>'+x.act+'</b><span>'+(so?'min '+so:'pezzi')+'</span></div>'+
+    '<div class="sub">'+[x.r.Descrizione,x.r.Matricola?('matr. '+x.r.Matricola):'',x.r.Marche,x.r.Originali,x.r.Fornitore].filter(Boolean).map(esc).join(' &middot; ')+'</div></div>'+
+    '<div class="giac"><b>'+x.act+'</b><span>'+(so?'min '+so+' ':'')+esc(x.r.Um||'pz')+'</span></div>'+
     '<div class="acts"><button class="btn-sm btn-car" data-act="car" data-code="'+esc(x.r.Codice)+'">+ Carico</button>'+
     '<button class="btn-sm btn-sca" data-act="sca" data-code="'+esc(x.r.Codice)+'">- Scarico</button>'+
     '<button class="btn-sm btn-gr" data-act="soglia" data-code="'+esc(x.r.Codice)+'">Scorta min</button></div></div>';
 }
 function viewMag(){
   var all=Object.keys(S.map).map(function(k){return S.map[k];});
-  var tot=all.reduce(function(a,x){return a+Math.max(x.act,0);},0);
+  var tot=all.reduce(function(a,x){ var u=String(x.r.Um||'pz').toLowerCase(); return (u==='pz'||u==='')?a+Math.max(x.act,0):a; },0);
   var zero=all.filter(function(x){return x.st==='zero';}).length, low=all.filter(function(x){return x.st==='low';}).length;
   var list=all.filter(matchRow);
   var h=(DEMO?'<div class="banner">Modalita demo: i dati qui sotto sono di prova. Collega lo script Google (vedi istruzioni) per usare il magazzino vero.</div>':'')+
@@ -193,7 +201,7 @@ function viewMag(){
    '<div class="stat-box rosso"><div class="stat-num">'+zero+'</div><div class="stat-label">Esauriti</div></div>'+
    '<div class="stat-box arancio"><div class="stat-num">'+low+'</div><div class="stat-label">Sotto scorta</div></div></div>'+
    '<input class="search" id="q" type="text" placeholder="Cerca codice, marca o codice originale..." value="'+esc(S.q)+'" autocomplete="off">'+
-   '<div class="chips">'+['TUTTI'].concat(CATS).map(function(c){return '<div class="chip'+(S.cat===c?' active':'')+'" data-cat="'+esc(c)+'">'+esc(c==='TUTTI'?'Tutti':c.charAt(0)+c.slice(1).toLowerCase())+'</div>';}).join('')+'</div>';
+   '<div class="chips">'+['TUTTI'].concat(cats()).map(function(c){return '<div class="chip'+(S.cat===c?' active':'')+'" data-cat="'+esc(c)+'">'+esc(c==='TUTTI'?'Tutti':c.charAt(0)+c.slice(1).toLowerCase())+'</div>';}).join('')+'</div>';
   h+= list.length ? '<div class="hint">'+list.length+' codici</div>'+list.map(rowHtml).join('') : '<div class="empty">Nessun codice trovato.</div>';
   return h;
 }
@@ -292,12 +300,173 @@ function formSoglia(code){
     '<div class="field"><label>Scorta minima</label><input type="number" id="fSoglia" min="0" value="'+(Number(x.r.Soglia)||0)+'"></div><button class="btn btn-primary" id="sSave" data-code="'+esc(code)+'">Salva</button>');
 }
 function formNuovo(){
-  openModal('Nuovo codice',
-    '<div class="field"><label>Categoria <span class="req">*</span></label><select id="nCat">'+opts(CATS)+'</select></div>'+
-    '<div class="field"><label>Codice Noitech <span class="req">*</span></label><input type="text" id="nCod" placeholder="es. NO 011380 oppure XPZ 1400" autocomplete="off"></div>'+
+  openModal('Nuovo articolo',
+    '<div class="field"><label>Categoria <span class="req">*</span></label><select id="nCat">'+opts(CATS_BASE)+'</select></div>'+
+    '<div class="field"><label>Codice <span class="req">*</span></label><input type="text" id="nCod" placeholder="es. NO 011380, codice Eqofluid, o modello macchina" autocomplete="off"></div>'+
+    '<div class="field"><label>Descrizione</label><input type="text" id="nDes" autocomplete="off"></div>'+
+    '<div class="row2"><div class="field"><label>Unita</label><select id="nUm">'+opts(['pz','m','kg','lt','kit'])+'</select></div><div class="field"><label>Fornitore</label><input type="text" id="nFor" autocomplete="off"></div></div>'+
+    '<div class="field"><label>Matricola (compressori ed essiccatori)</label><input type="text" id="nMat" autocomplete="off"></div>'+
     '<div class="field"><label>Marche compatibili</label><input type="text" id="nMar" autocomplete="off"></div>'+
     '<div class="row2"><div class="field"><label>Giacenza iniziale</label><input type="number" id="nGia" min="0" value="0"></div><div class="field"><label>Scorta minima</label><input type="number" id="nSog" min="0" value="0"></div></div>'+
     '<button class="btn btn-primary" id="nSave">Aggiungi al magazzino</button>');
+}
+
+// ---------- punto zero (importazione conta da Excel) ----------
+function stripAcc(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
+var HMAP={categoria:'Categoria',codice:'Codice',descrizione:'Descrizione',um:'Um',unita:'Um',quantita:'GiacIniziale',qta:'GiacIniziale',giacenza:'GiacIniziale',fornitore:'Fornitore',matricola:'Matricola',marche:'Marche',note:'Note',scortaminima:'Soglia',soglia:'Soglia',prezzo:'Prezzo'};
+function viewImp(){
+  var im=S.imp;
+  if(!S.impData) S.impData=today();
+  var h='<div class="card"><div class="code" style="margin-bottom:6px">Punto zero: carica la conta da Excel</div>'+
+    '<div class="hint">Usa il modello Excel (colonne: Categoria, Codice, Descrizione, Um, Quantita, Fornitore, Matricola, Marche, Note). Le quantita della conta diventano la nuova giacenza di partenza: per i codici gia presenti sostituiscono quella vecchia, e i movimenti con data uguale o precedente alla conta non contano piu.</div>'+
+    '<div class="field"><label>Data della conta</label><input type="date" id="impData" value="'+esc(S.impData)+'"></div>'+
+    '<input type="file" id="fileImp" accept=".xlsx,.xls,.csv"></div>';
+  if(!im) return h;
+  if(im.err) return h+'<div class="banner">'+esc(im.err)+'</div>';
+  h+='<div class="stats-bar"><div class="stat-box"><div class="stat-num">'+im.rows.length+'</div><div class="stat-label">Righe lette</div></div>'+
+     '<div class="stat-box"><div class="stat-num">'+im.nuove.length+'</div><div class="stat-label">Articoli nuovi</div></div>'+
+     '<div class="stat-box arancio"><div class="stat-num">'+im.presenti.length+'</div><div class="stat-label">Gia presenti</div></div>'+
+     '<div class="stat-box rosso"><div class="stat-num">'+im.scartate.length+'</div><div class="stat-label">Righe scartate</div></div></div>';
+  if(im.scartate.length) h+='<div class="banner">Righe scartate (manca codice o categoria): '+im.scartate.slice(0,15).map(esc).join(', ')+(im.scartate.length>15?'...':'')+'</div>';
+  var diff=im.presenti.filter(function(p){return p.diff;});
+  if(diff.length) h+='<div class="card"><div class="code" style="margin-bottom:6px">Giacenza che cambia con la conta ('+diff.length+')</div>'+diff.slice(0,80).map(function(p){return '<div class="sub">'+esc(p.Codice)+': sistema '+p.att+' &rarr; conta '+p.q+'</div>';}).join('')+(diff.length>80?'<div class="sub">...</div>':'')+'</div>';
+  if(im.prog!=null) h+='<div class="banner">Caricamento in corso: '+im.prog+' / '+im.rows.length+'. Non chiudere la pagina.</div>';
+  else if(im.rows.length) h+='<button class="btn btn-primary" id="impGo">Carica la conta ('+im.rows.length+' articoli)</button>';
+  return h;
+}
+function leggiFile(file){
+  var rd=new FileReader();
+  rd.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+      var rows=[],scart=[],visti={};
+      raw.forEach(function(r,i){
+        var o={};
+        Object.keys(r).forEach(function(k){ var m=HMAP[stripAcc(k)]; if(m) o[m]=String(r[k]).trim(); });
+        if(!o.Codice && !o.Categoria && !o.Descrizione) return;
+        if(!o.Codice || !o.Categoria){ scart.push('riga '+(i+2)); return; }
+        o.Categoria=o.Categoria.toUpperCase();
+        o.GiacIniziale=parseFloat(String(o.GiacIniziale||'0').replace(',','.'))||0;
+        o.Soglia=parseFloat(o.Soglia)||'';
+        if(!o.Um) o.Um='pz';
+        var k=norm(o.Codice); if(visti[k]){ visti[k].GiacIniziale+=o.GiacIniziale; return; } visti[k]=o; rows.push(o);
+      });
+      var esist={}; Object.keys(S.map).forEach(function(c){ esist[norm(c)]=S.map[c]; });
+      var nuove=[],presenti=[];
+      rows.forEach(function(o){ var x=esist[norm(o.Codice)]; if(x) presenti.push({Codice:o.Codice,q:o.GiacIniziale,att:x.act,diff:x.act!==o.GiacIniziale}); else nuove.push(o); });
+      S.imp={rows:rows,nuove:nuove,presenti:presenti,scartate:scart,prog:null};
+    }catch(err){ S.imp={err:'Non riesco a leggere il file: '+err.message}; }
+    render();
+  };
+  rd.readAsArrayBuffer(file);
+}
+function caricaNuove(){
+  var im=S.imp, i=0, B=5, dataTxt=fmtData(S.impData||today());
+  im.prog=0; render();
+  function next(){
+    if(i>=im.rows.length){ im.prog=null; toast('Punto zero caricato'); S.imp=null; if(DEMO){ afterLoad(); } else loadAll(); return; }
+    var batch=im.rows.slice(i,i+B);
+    var fine=function(ok){ if(!ok){ im.prog=null; render(); toast('Errore a meta caricamento: ricarica la pagina e rifai la stessa importazione, e sicuro rifarla'); return; } i+=B; im.prog=Math.min(i,im.rows.length); render(); next(); };
+    if(DEMO){ batch.forEach(function(o){ var x=S.map[o.Codice]; if(x){ x.r.GiacIniziale=o.GiacIniziale; x.r.DataConta=dataTxt; } else { o.DataConta=dataTxt; S.inv.push(o); } }); compute(); fine(true); return; }
+    var called=false;
+    jsonp('action=addCodici&upd=1&data='+encodeURIComponent(dataTxt)+'&rows='+encodeURIComponent(JSON.stringify(batch)), function(d){ if(called)return; called=true; fine(!!d && d.status==='ok'); });
+    setTimeout(function(){ if(!called){ called=true; fine(false); } },20000);
+  }
+  next();
+}
+
+
+// ---------- bolle di arrivo (file carichi) ----------
+var BMAP={data:'Data',datadocumento:'Data',ddt:'NumDoc',numdoc:'NumDoc',documento:'NumDoc',bolla:'NumDoc',numerobolla:'NumDoc',fornitore:'Fornitore',codice:'Codice',quantita:'Qta',qta:'Qta',tipo:'Tipo',categoria:'Categoria',descrizione:'Descrizione',um:'Um'};
+function dataTxt(v){
+  if(v instanceof Date && !isNaN(v)){ var d=v.getDate(), m=v.getMonth()+1; return (d<10?'0':'')+d+'/'+(m<10?'0':'')+m+'/'+v.getFullYear(); }
+  var s=String(v||'').trim(); var m2=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  if(m2){ var y=m2[3].length===2?'20'+m2[3]:m2[3]; return ('0'+m2[1]).slice(-2)+'/'+('0'+m2[2]).slice(-2)+'/'+y; }
+  return s;
+}
+function viewBolle(){
+  var b=S.bol;
+  var h='<div class="card"><div class="code" style="margin-bottom:6px">Carica bolle di arrivo</div>'+
+    '<div class="hint">Scegli il file Excel dei carichi che ti prepara Claude dalle bolle (colonne: Data, DDT, Fornitore, Codice, Quantita, Tipo, Categoria, Descrizione, Um). Controlla l\'anteprima e premi Registra. Le righe gia caricate (stesso DDT e codice) vengono saltate.</div>'+
+    '<input type="file" id="fileBolle" accept=".xlsx,.xls,.csv"></div>';
+  if(!b) return h;
+  if(b.err) return h+'<div class="banner">'+esc(b.err)+'</div>';
+  h+='<div class="stats-bar"><div class="stat-box"><div class="stat-num">'+b.righe.length+'</div><div class="stat-label">Da registrare</div></div>'+
+     '<div class="stat-box"><div class="stat-num">'+b.pezzi+'</div><div class="stat-label">Pezzi</div></div>'+
+     '<div class="stat-box arancio"><div class="stat-num">'+b.nuoviArt.length+'</div><div class="stat-label">Articoli nuovi</div></div>'+
+     '<div class="stat-box rosso"><div class="stat-num">'+(b.gia.length+b.errori.length)+'</div><div class="stat-label">Saltate</div></div></div>';
+  if(b.gia.length) h+='<div class="banner">Gia caricate, saltate: '+b.gia.slice(0,20).map(esc).join(', ')+(b.gia.length>20?'...':'')+'</div>';
+  if(b.errori.length) h+='<div class="banner">Da correggere nel file: '+b.errori.slice(0,20).map(esc).join('; ')+'</div>';
+  h+='<div class="card">'+b.righe.slice(0,120).map(function(m){ var nuovo=b.nuoviArt.some(function(n){return n.Codice===m.Codice;}); return '<div class="sub" style="white-space:normal"><b>'+esc(m.Codice)+'</b> &times; '+esc(m.Qta)+' &middot; DDT '+esc(m.NumDoc)+' del '+esc(m.Data)+' &middot; '+esc(m.Controparte)+(nuovo?' <span class="badge b-low">NUOVO ARTICOLO</span>':'')+'</div>'; }).join('')+(b.righe.length>120?'<div class="sub">... e altre '+(b.righe.length-120)+' righe</div>':'')+'</div>';
+  if(b.prog!=null) h+='<div class="banner">Registrazione in corso: '+b.prog+' / '+b.righe.length+'. Non chiudere la pagina.</div>';
+  else if(b.righe.length) h+='<button class="btn btn-primary" id="bolGo">Registra '+b.righe.length+' carichi</button>';
+  return h;
+}
+function leggiBolle(file){
+  var rd=new FileReader();
+  rd.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      var raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      var righe=[],nuoviArt=[],gia=[],errori=[],pezzi=0,ts=Date.now();
+      var inChiave={}; S.mov.forEach(function(m){ if(m.Stato!=='ANNULLATO') inChiave[norm(m.NumDoc)+'|'+norm(m.Codice)+'|'+m.Tipo]=1; });
+      raw.forEach(function(r,i){
+        var o={}; Object.keys(r).forEach(function(k){ var m=BMAP[stripAcc(k)]; if(m) o[m]=r[k]; });
+        var cod=String(o.Codice||'').trim(); if(!cod) return;
+        var q=parseFloat(String(o.Qta).replace(',','.')); if(!q){ errori.push('riga '+(i+2)+' '+cod+': quantita mancante'); return; }
+        var ddt=String(o.NumDoc||'').trim(); if(!ddt){ errori.push('riga '+(i+2)+' '+cod+': manca il numero DDT'); return; }
+        var forn=String(o.Fornitore||'').trim();
+        var esiste=!!S.map[cod] || Object.keys(S.map).some(function(k){return norm(k)===norm(cod);});
+        var codReale=cod; if(esiste && !S.map[cod]){ Object.keys(S.map).forEach(function(k){ if(norm(k)===norm(cod)) codReale=k; }); }
+        if(!esiste){
+          var cat=String(o.Categoria||'').trim().toUpperCase();
+          if(!cat){ errori.push('riga '+(i+2)+' '+cod+': codice nuovo, indica la Categoria'); return; }
+          if(!nuoviArt.some(function(n){return norm(n.Codice)===norm(cod);})) nuoviArt.push({Categoria:cat,Codice:cod,Descrizione:String(o.Descrizione||'').trim(),Um:String(o.Um||'pz').trim()||'pz',Fornitore:forn,GiacIniziale:0});
+        }
+        var tipo=q<0?'SCARICO':'CARICO'; var qa=Math.abs(q);
+        var chiave=norm(ddt)+'|'+norm(codReale)+'|'+tipo;
+        if(inChiave[chiave]){ gia.push(ddt+' '+cod); return; }
+        inChiave[chiave]=1;
+        righe.push({ID:'B'+ts+'_'+i,Data:dataTxt(o.Data),Codice:codReale,Tipo:tipo,Qta:qa,Controparte:forn,TipoDoc:tipo==='CARICO'?'DDT FORNITORE':'RESO FORNITORE',NumDoc:ddt,RP:'',CodiceOrig:'',Operatore:'BOLLA',Stato:'APPROVATO',Origine:'BOLLA',Note:''});
+        pezzi+=(tipo==='CARICO'?qa:-qa);
+      });
+      S.bol={righe:righe,nuoviArt:nuoviArt,gia:gia,errori:errori,pezzi:pezzi,prog:null};
+    }catch(err){ S.bol={err:'Non riesco a leggere il file: '+err.message}; }
+    render();
+  };
+  rd.readAsArrayBuffer(file);
+}
+function registraBolle(){
+  var b=S.bol, righe=b.righe, tot=righe.length;
+  b.prog=0; render();
+  function movimenti(){
+    var idx=0, fatte=0, fallite=0, attivi=0;
+    function fine(){
+      S.bol=null; compute(); render();
+      toast(fallite? ('Registrati '+fatte+' carichi, '+fallite+' non riusciti: ricarica la pagina e rifai, quelli gia fatti vengono saltati') : ('Registrati '+fatte+' carichi'));
+      if(!DEMO) setTimeout(loadAll,1500);
+    }
+    function pump(){
+      while(attivi<3 && idx<tot){
+        (function(m){ attivi++;
+          scrivi('addMov',m,function(ok){ attivi--; if(ok){ S.mov.push(m); fatte++; } else fallite++; b.prog=fatte+fallite; if(fatte+fallite===tot){ fine(); } else { compute(); render(); pump(); } });
+        })(righe[idx++]);
+      }
+    }
+    if(!tot){ fine(); return; }
+    pump();
+  }
+  var i=0;
+  (function nuovi(){
+    if(i>=b.nuoviArt.length){ movimenti(); return; }
+    var batch=b.nuoviArt.slice(i,i+5); i+=5;
+    if(DEMO){ batch.forEach(function(o){ S.inv.push(o); }); compute(); nuovi(); return; }
+    var called=false;
+    jsonp('action=addCodici&rows='+encodeURIComponent(JSON.stringify(batch)), function(d){ if(called)return; called=true; if(d && d.status==='ok'){ batch.forEach(function(o){ S.inv.push(o); }); compute(); nuovi(); } else { b.prog=null; render(); toast('Errore nel creare i codici nuovi, riprova'); } });
+    setTimeout(function(){ if(!called){ called=true; b.prog=null; render(); toast('Il server non risponde, riprova'); } },20000);
+  })();
 }
 
 // ---------- eventi ----------
@@ -305,6 +474,8 @@ document.addEventListener('click', function(e){
   var t=e.target;
   if(t.id==='mClose'||t.id==='modal'){ closeModal(); return; }
   if(t.id==='btnNuovoCodice'){ formNuovo(); return; }
+  if(t.id==='impGo'){ caricaNuove(); return; }
+  if(t.id==='bolGo'){ registraBolle(); return; }
   if(t.id==='segC'){ setTipo('CARICO'); return; }
   if(t.id==='segS'){ setTipo('SCARICO'); return; }
   if(t.id==='fSave'){ saveMov(); return; }
@@ -317,7 +488,7 @@ document.addEventListener('click', function(e){
     var g=function(id){return document.getElementById(id).value.trim();};
     var cod=g('nCod').toUpperCase(); if(!cod){ toast('Inserisci il codice'); return; }
     if(S.map[cod]){ toast('Codice gia presente'); return; }
-    var r={Categoria:g('nCat'),Codice:cod,Marche:g('nMar'),Originali:'',GiacIniziale:parseInt(g('nGia'),10)||0,Soglia:parseInt(g('nSog'),10)||0,Prezzo:'',Note:''};
+    var r={Categoria:g('nCat'),Codice:cod,Descrizione:g('nDes'),Um:g('nUm'),Fornitore:g('nFor'),Matricola:g('nMat'),Marche:g('nMar'),Originali:'',GiacIniziale:parseInt(g('nGia'),10)||0,Soglia:parseInt(g('nSog'),10)||0,Prezzo:'',Note:''};
     scrivi('addCodice',r,function(ok){ if(ok){ S.inv.push(r); compute(); render(); closeModal(); toast('Codice aggiunto'); } else toast('Errore, riprova'); });
     return;
   }
@@ -338,6 +509,7 @@ document.addEventListener('click', function(e){
     scrivi('setStato',{id:id,stato:nuovo},function(ok){ if(ok){ S.mov.forEach(function(m){ if(String(m.ID)===String(id)) m.Stato=nuovo; }); compute(); render(); toast('Fatto'); } else toast('Errore, riprova'); });
   }
 });
+document.addEventListener('change', function(e){ if(e.target.id==='fileBolle' && e.target.files[0]){ leggiBolle(e.target.files[0]); return; } if(e.target.id==='impData'){ S.impData=e.target.value; return; } if(e.target.id==='fileImp' && e.target.files[0]) leggiFile(e.target.files[0]); });
 document.addEventListener('input', function(e){ if(e.target.id==='q'){ S.q=e.target.value; S.focusQ=true; render(); } });
 
 // ---------- demo ----------
